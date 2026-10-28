@@ -112,7 +112,7 @@ def return_events(events):
     save_buffer()
 
     log_debug(
-        "Возвращено событий в буфер: %s"
+        "В буфер возвращено событий: %s"
         % len(events)
     )
 
