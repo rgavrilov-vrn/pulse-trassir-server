@@ -1,44 +1,80 @@
 # logger.py
-# Восстановленная реализация по интерфейсу проекта.
 import logging
 import os
 from logging.handlers import RotatingFileHandler
 
 import config
 
-_logger = None
+VALID_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+logger = logging.getLogger("camera_monitor")
 
-def init_logger(log_level=None):
-    global _logger
-    level_name = log_level or config.LOG_LEVEL
-    level = getattr(logging, level_name.upper(), logging.INFO)
-    directory = os.path.dirname(config.LOG_FILE)
-    if directory and not os.path.exists(directory):
-        os.makedirs(directory)
-    handler = RotatingFileHandler(config.LOG_FILE, maxBytes=config.LOG_MAX_BYTES, backupCount=config.LOG_BACKUP_COUNT, encoding="utf-8")
-    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    handler.setFormatter(formatter)
-    _logger = logging.getLogger("trassir_camera_monitor")
-    _logger.setLevel(level)
-    _logger.handlers.clear()
-    _logger.addHandler(handler)
-    return _logger
+
+def normalize_log_level(value):
+    if not value:
+        return logging.INFO
+
+    level_name = str(value).upper()
+
+    if level_name not in VALID_LOG_LEVELS:
+        return logging.INFO
+
+    return getattr(logging, level_name)
+
 
 def apply_log_level(level_name):
-    level = getattr(logging, level_name.upper(), logging.INFO)
-    logging.getLogger("trassir_camera_monitor").setLevel(level)
+    level = normalize_log_level(level_name)
+    logger.setLevel(level)
 
-def _get_logger():
-    global _logger
-    if _logger is None:
-        init_logger()
-    return _logger
+    for handler in logger.handlers:
+        handler.setLevel(level)
+
+    logger.debug(
+        "Уровень логирования изменён на %s"
+        % logging.getLevelName(level)
+    )
+
+
+def init_logger(level_name=None):
+    if not logger.handlers:
+        log_directory = os.path.dirname(config.LOG_FILE)
+
+        if log_directory and not os.path.exists(log_directory):
+            os.makedirs(log_directory)
+
+        handler = RotatingFileHandler(
+            filename=config.LOG_FILE,
+            mode="a",
+            maxBytes=config.LOG_MAX_BYTES,
+            backupCount=config.LOG_BACKUP_COUNT,
+            encoding="utf-8",
+        )
+
+        formatter = logging.Formatter(
+            fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    apply_log_level(level_name or config.LOG_LEVEL)
+
 
 def log_debug(message):
-    _get_logger().debug(message)
+    logger.debug(message)
+
 
 def log_info(message):
-    _get_logger().info(message)
+    logger.info(message)
+
+
+def log_warning(message):
+    logger.warning(message)
+
 
 def log_error(message):
-    _get_logger().error(message)
+    logger.error(message)
+
+
+def log_exception(message, error):
+    logger.error("%s: %s" % (message, error), exc_info=True)
