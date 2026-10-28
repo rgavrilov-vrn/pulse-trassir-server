@@ -152,10 +152,7 @@ def send_status(payload):
         if response.status not in (200, 201, 202, 204):
             raise Exception(
                 "HTTP %s: %s"
-                % (
-                    response.status,
-                    response_body,
-                )
+                % (response.status, response_body)
             )
 
         log_info(
@@ -182,7 +179,6 @@ def send_status(payload):
                 error,
             )
         )
-
         raise
 
     finally:
