@@ -1,0 +1,6 @@
+{
+  "objects_snapshot": {
+    "enabled": true,
+    "interval_seconds": 300
+  }
+}
