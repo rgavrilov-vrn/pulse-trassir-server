@@ -1,0 +1,14 @@
+{
+  "objects_health": {
+    "enabled": true,
+    "interval_seconds": 60,
+    "fields": [
+      "signal",
+      "recording_local",
+      "recording_hw",
+      "fps_main",
+      "kbps_main",
+      "grabber_error"
+    ]
+  }
+}
