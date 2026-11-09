@@ -10,6 +10,15 @@
     "exclude_event_types": [],
     "log_sources": []
   },
+  "health": {
+    "enabled": true,
+    "interval_seconds": 60,
+    "fields": ["server_ok", "cpu_usage", "gpu_usage", "startup_ts", "ip_devices_total", "ip_devices_connected", "channels_network_total", "channels_network_online", "db_connected", "db_is_slow", "db_last_error", "disks_error_count", "disks_is_slow", "disks_last_error", "disks_stat_main_days", "disks_stat_subs_days", "scripts_ok", "scripts_total", "network_really_connected", "network_should_be_connected", "network_last_error"]
+  },
+  "raw_sdk": {
+    "enabled": true,
+    "attributes": ["type", "ts", "origin", "p1", "p2", "p3"]
+  },
   "sender": {
     "enabled": false,
     "tick_seconds": 5,
