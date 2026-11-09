@@ -4,6 +4,7 @@
 # Модуль не регистрирует SDK-обработчики при импорте: это делают scripts/*.py.
 from __future__ import unicode_literals
 import os, json, time, uuid, sqlite3, ssl, logging, random
+import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 # Основная среда — Python 2.7; ветка except позволяет читать модуль в Python 3.
@@ -91,13 +92,14 @@ class ConfigManager(object):
             if any(d[x]!=self.value['delivery'][x] for x in ('url','destination_id')): raise ValueError('Explicit destination migration required')
 
 class EventRepository(object):
-    # Единственный слой доступа к БД. У Collector и Sender разные соединения.
+    # Единственный слой доступа к БД. Каждый поток каждого приложения
+    # получает собственное соединение: SDK может вызвать tick не в потоке запуска.
     # Состояние доставки хранится прямо в events: сейчас приёмник только один.
     def __init__(self,path,c):
-        # Малое ожидание блокировки снижает риск долгой остановки SDK-callback.
-        # Цена: при занятой/недоступной БД событие может не сохраниться.
-        mkdir(os.path.dirname(path)); self.db=sqlite3.connect(path,timeout=0.1)
-        self.db.row_factory=sqlite3.Row
+        # Не передаём одно соединение между потоками и не отключаем check_same_thread.
+        self._database_path = path
+        self._thread_local = threading.local()
+        mkdir(os.path.dirname(path))
         self.db.execute('PRAGMA journal_mode=DELETE'); self.db.execute('PRAGMA synchronous=FULL')
         # events — события; batches — неизменные сетевые пакеты;
         # offsets — позиции файловых логов; meta — схема и привязка БД.
@@ -109,6 +111,24 @@ class EventRepository(object):
         # Проверка действует и после перезапуска: чужую очередь не отправляем.
         if self.db.execute("SELECT v FROM meta WHERE k='schema'").fetchone()[0]!='1': raise ValueError('Unknown database schema')
         if self.db.execute("SELECT v FROM meta WHERE k='identity'").fetchone()[0]!=identity: raise ValueError('Database identity mismatch')
+    @property
+    def db(self):
+        # threading.local хранит connection отдельно для каждого потока.
+        # Внутри одной транзакции обращения к self.db возвращают одно соединение.
+        connection = getattr(self._thread_local, 'connection', None)
+        if connection is None:
+            # Малое ожидание блокировки сохранено; это не исправление database is locked.
+            connection = sqlite3.connect(self._database_path, timeout=0.1)
+            try:
+                connection.row_factory = sqlite3.Row
+                # synchronous — настройка соединения, задаём её каждому потоку.
+                connection.execute('PRAGMA synchronous=FULL')
+            except Exception:
+                connection.close()
+                raise
+            # Публикуем соединение только после успешной настройки.
+            self._thread_local.connection = connection
+        return connection
     def save(self,event,checkpoint=None):
         # Контекст соединения делает COMMIT при успехе, ROLLBACK при исключении.
         # Для логов событие и новая позиция должны фиксироваться вместе.
