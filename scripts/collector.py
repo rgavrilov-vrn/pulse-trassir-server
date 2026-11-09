@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-# Серверный Collector: прежние сборщики плюс профили каналов, архива и IP-устройств.
+# SDK object передаётся явно: не подменять его встроенным Python object.
 import sys
 ROOT = r"C:\TRASSIR_Agent"
 sys.path.insert(0, ROOT + "/src")
-from trassir_agent.profiles import CollectorApplication
-app = CollectorApplication(ROOT + "/config.json", settings, objects_list)
+from trassir_agent.object_states import CollectorApplication
+app = CollectorApplication(ROOT + "/config.json", settings, objects_list, object)
 
 def tick():
     try:

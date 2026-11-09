@@ -1,0 +1,14 @@
+{
+  "objects_states": {
+    "enabled": true,
+    "interval_seconds": 60,
+    "classes": [
+      "IP Device",
+      "Script",
+      "Script (Local)",
+      "Template",
+      "Folder",
+      "FolderH"
+    ]
+  }
+}
