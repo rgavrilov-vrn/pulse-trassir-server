@@ -1,0 +1,35 @@
+{
+  "config_version": 1,
+  "server_id": "video81",
+  "log_level": "INFO",
+  "collector": {
+    "enabled": true,
+    "file_copy_enabled": true,
+    "tick_seconds": 5,
+    "heartbeat_seconds": 60,
+    "exclude_event_types": [],
+    "log_sources": []
+  },
+  "sender": {
+    "enabled": false,
+    "tick_seconds": 5,
+    "batch_size": 100,
+    "max_batch_bytes": 262144,
+    "retry_initial_seconds": 5,
+    "retry_max_seconds": 300,
+    "retention_days": 7
+  },
+  "delivery": {
+    "destination_id": "main",
+    "url": "https://monitor.example.com/api/v1/telemetry",
+    "contract_version": "1.0",
+    "token_file": "secrets/api.token",
+    "ca_file": null,
+    "timeout_seconds": 5
+  },
+  "storage": {
+    "database": "state/queue.db",
+    "archive": "archive/events.jsonl",
+    "logs": "logs"
+  }
+}

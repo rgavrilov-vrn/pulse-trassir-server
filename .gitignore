@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+dist/
+config.json
+secrets/
+state/
+archive/
+logs/
+*.db
+*.db-*
