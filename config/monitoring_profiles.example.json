@@ -1,0 +1,16 @@
+{
+  "monitoring_profiles": {
+    "channels_extended": {
+      "enabled": true,
+      "interval_seconds": 60
+    },
+    "channel_archive": {
+      "enabled": true,
+      "interval_seconds": 600
+    },
+    "ip_devices": {
+      "enabled": true,
+      "interval_seconds": 900
+    }
+  }
+}
