@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-# Запускать только после остановки прежних Collector и Sender.
-# Reload не отменяет существующие SDK-подписки и таймеры.
+# Запускать после остановки прежних Collector/Sender. Reload не отменяет подписки.
 import sys
 ROOT = r"C:\TRASSIR_Agent"
 SOURCE = ROOT + "/src"
@@ -13,16 +12,17 @@ except NameError:
     from importlib import reload as reload_module
 
 for name in ["trassir_agent.core", "trassir_agent.features",
-             "trassir_agent.inventory", "trassir_agent.unified_snapshot"]:
+             "trassir_agent.inventory", "trassir_agent.unified_snapshot",
+             "trassir_agent.device_snapshot"]:
     if name in sys.modules:
         reload_module(sys.modules[name])
     else:
         __import__(name, fromlist=["CollectorApplication"])
 
-from trassir_agent.unified_snapshot import CollectorApplication
+from trassir_agent.device_snapshot import CollectorApplication
 app = CollectorApplication(ROOT + "/config.json", settings, objects_list, object)
-app.logger.info("Unified Collector started: module=%s options=%s",
-                type(app).__module__, app._snapshot_options)
+app.logger.info("Unified Collector started: module=%s options=%s device_options=%s",
+                type(app).__module__, app._snapshot_options, app._device_options)
 
 def tick():
     try:

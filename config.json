@@ -1,0 +1,91 @@
+{
+  "config_version": 1,
+  "server_id": "video81",
+  "log_level": "INFO",
+  "collector": {
+    "enabled": true,
+    "file_copy_enabled": true,
+    "tick_seconds": 5,
+    "heartbeat_seconds": 60,
+    "exclude_event_types": [],
+    "log_sources": []
+  },
+  "raw_sdk": {
+    "enabled": true,
+    "attributes": [
+      "type",
+      "ts",
+      "origin",
+      "p1",
+      "p2",
+      "p3"
+    ]
+  },
+  "sender": {
+    "enabled": false,
+    "tick_seconds": 5,
+    "batch_size": 100,
+    "max_batch_bytes": 262144,
+    "retry_initial_seconds": 5,
+    "retry_max_seconds": 300,
+    "retention_days": 7
+  },
+  "delivery": {
+    "destination_id": "pulse-platform-dev",
+    "url": "https://monitor.example.com/api/v1/telemetry",
+    "contract_version": "1.0",
+    "token_file": "secrets/api.token",
+    "ca_file": null,
+    "timeout_seconds": 5
+  },
+  "storage": {
+    "database": "state/queue.db",
+    "archive": "archive/events.jsonl",
+    "logs": "logs"
+  },
+  "objects_snapshot": {
+    "enabled": true,
+    "interval_seconds": 60,
+    "local_server_guid": "tkcbkSr1",
+    "server_health_fields": [
+      "server_ok",
+      "cpu_usage",
+      "gpu_usage",
+      "startup_ts",
+      "ip_devices_total",
+      "ip_devices_connected",
+      "channels_network_total",
+      "channels_network_online",
+      "db_connected",
+      "db_is_slow",
+      "db_last_error",
+      "disks_error_count",
+      "disks_is_slow",
+      "disks_last_error",
+      "disks_stat_main_days",
+      "disks_stat_subs_days",
+      "scripts_ok",
+      "scripts_total",
+      "network_really_connected",
+      "network_should_be_connected",
+      "network_last_error"
+    ],
+    "channel_fields": [
+      "signal",
+      "recording_local",
+      "recording_hw",
+      "fps_main",
+      "kbps_main",
+      "grabber_error"
+    ],
+    "device_fields": [
+      "connection_ip",
+      "connection_port",
+      "family",
+      "model"
+    ],
+    "device_channel_fields": [
+      "channel00_guid"
+    ]
+  }
+}
