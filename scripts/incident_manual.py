@@ -19,7 +19,7 @@ PULSE_BASE_URL = "http://10.10.55.229:8080"
 
 PULSE_INCIDENT_URL = (
     PULSE_BASE_URL
-    + "/pulse-platform/api/v1/tressir/incidents/manual"
+    + "/pulse-platform/api/v1/trassir/ingest"
 )
 
 PULSE_TOKEN_URL = (
@@ -390,7 +390,7 @@ def build_pulse_batch(event):
         ),
 
         "producer": {
-            "name": "trassir-client-manual",
+            "name": "trassir-sdk-agent",
             "version": "1.0.0"
         },
 
@@ -596,6 +596,21 @@ def register_incident(channel):
         kuma_result = send_to_kuma(kuma_data)
 
         pulse_batch = build_pulse_batch(event)
+
+        # Сохраняем точный telemetry-пакет,
+        # который будет отправлен в Pulse ingest.
+        pulse_batch_path = os.path.join(
+            ROOT_DIR,
+            base_filename + "_pulse_ingest.json"
+        )
+
+        write_json(pulse_batch_path, pulse_batch)
+
+        write_log(
+            "LOCAL",
+            "Saved pulse_batch event_id=" + event_id
+        )
+
         pulse_result = send_to_pulse(pulse_batch)
 
         alert(
