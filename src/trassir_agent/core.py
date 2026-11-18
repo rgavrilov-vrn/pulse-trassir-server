@@ -152,8 +152,12 @@ class EventRepository(object):
                 self.db.execute("UPDATE events SET status='delivered' WHERE batch_id=?",(bid,))
             else:
                 n=row[3]+1; s=c['sender']
-                delay=min(s['retry_max_seconds'],s['retry_initial_seconds']*2**min(n-1,16))*random.uniform(0.8,1.2)
-                self.db.execute('UPDATE batches SET attempts=?,next_at=?,lease=0,owner=NULL,error=? WHERE id=?',(n,time.time()+delay,error,bid))
+                if n>=10:
+                    self.db.execute("UPDATE batches SET status='quarantine',attempts=?,next_at=0,lease=0,owner=NULL,error=? WHERE id=?",(n,error,bid))
+                    self.db.execute("UPDATE events SET status='pending',batch_id=NULL WHERE batch_id=?",(bid,))
+                else:
+                    delay=min(s['retry_max_seconds'],s['retry_initial_seconds']*2**min(n-1,16))*random.uniform(0.8,1.2)
+                    self.db.execute('UPDATE batches SET attempts=?,next_at=?,lease=0,owner=NULL,error=? WHERE id=?',(n,time.time()+delay,error,bid))
     def cleanup(self,days):
         if not days: return
         with self.db:
@@ -274,6 +278,12 @@ class HttpTransport(object):
         if not value or '\r' in value or '\n' in value: raise ValueError('Empty or invalid token')
         value.encode('ascii')
         return value
+    def authenticate(self,c,resolve):
+        if c.get('token_file'):
+            with open(resolve(c['token_file']),'rb') as f: return self._token(f.read().decode('ascii'))
+        if c.get('auth_file'):
+            return self._get_token(c,resolve)
+        return None
     def _get_token(self,c,resolve):
         with open(resolve(c['auth_file']),'rb') as f:
             auth=json.loads(f.read().decode('utf-8-sig'))
@@ -303,13 +313,11 @@ class HttpTransport(object):
         value=json.loads(self._post(url,payload,headers,c,resolve,True).decode('utf-8-sig'))
         for key in path: value=value[key]
         return self._token(value)
-    def send(self,payload,c,resolve):
+    def send(self,payload,c,resolve,token=None):
         headers={'Content-Type':'application/json; charset=utf-8','User-Agent':'trassir-sdk-agent/1.0.0'}
-        if c.get('auth_file'):
-            token=self._get_token(c,resolve)
-            headers['Authorization']='Bearer '+token
-        elif c.get('token_file'):
-            with open(resolve(c['token_file']),'rb') as f: token=self._token(f.read().decode('ascii'))
+        if token is None:
+            token=self.authenticate(c,resolve)
+        if token:
             headers['Authorization']='Bearer '+token
         return self._post(c['url'],payload.encode('utf-8'),headers,c,resolve)
 
@@ -320,11 +328,18 @@ class SenderApplication(Application):
     def tick(self):
         c=self.refresh()
         if not c['sender']['enabled']: return
+        token=None
+        try:
+            token=self.transport.authenticate(c['delivery'],self.config.resolve)
+        except PulseAuthError as e:
+            self.logger.warning('Authentication unavailable: %s',scalar(e)); return
+        except Exception as e:
+            self.logger.warning('Authentication unavailable: %s',type(e).__name__); return
         batch=self.repository.claim(c,self.owner)
         if batch:
             ok=False; error=None
             try:
-                status=self.transport.send(batch['payload'],c['delivery'],self.config.resolve)
+                status=self.transport.send(batch['payload'],c['delivery'],self.config.resolve,token)
                 ok=status==200; error=None if ok else 'HTTP %s'%status
             except PulseAuthError as e: error=scalar(e)
             except Exception as e: error=type(e).__name__
