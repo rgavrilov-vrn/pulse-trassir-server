@@ -88,7 +88,7 @@ class EventRepository(object):
         self._database_path = path
         self._thread_local = threading.local()
         mkdir(os.path.dirname(path))
-        self.db.execute('PRAGMA journal_mode=DELETE'); self.db.execute('PRAGMA synchronous=FULL')
+        self.db.execute('PRAGMA journal_mode=WAL'); self.db.execute('PRAGMA synchronous=NORMAL')
         self.db.executescript("CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY,v TEXT); CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,payload TEXT,created REAL,status TEXT DEFAULT 'pending',batch_id TEXT); CREATE INDEX IF NOT EXISTS ready ON events(status); CREATE TABLE IF NOT EXISTS batches(id TEXT PRIMARY KEY,payload TEXT,status TEXT,attempts INTEGER DEFAULT 0,next_at REAL DEFAULT 0,lease REAL DEFAULT 0,owner TEXT,error TEXT,created REAL,delivered REAL); CREATE TABLE IF NOT EXISTS offsets(id TEXT PRIMARY KEY,state TEXT);")
         identity=dumps([c['server_id'],c['delivery']['destination_id'],c['delivery']['url']])
         with self.db:
@@ -100,10 +100,10 @@ class EventRepository(object):
     def db(self):
         connection = getattr(self._thread_local, 'connection', None)
         if connection is None:
-            connection = sqlite3.connect(self._database_path, timeout=0.1)
+            connection = sqlite3.connect(self._database_path, timeout=5)
             try:
                 connection.row_factory = sqlite3.Row
-                connection.execute('PRAGMA synchronous=FULL')
+                connection.execute('PRAGMA synchronous=NORMAL')
             except Exception:
                 connection.close()
                 raise
