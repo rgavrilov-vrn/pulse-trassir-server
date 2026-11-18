@@ -123,25 +123,25 @@ class EventRepository(object):
         try:
             self.db.execute('BEGIN IMMEDIATE')
             row=self.db.execute("SELECT * FROM batches WHERE status='pending' ORDER BY created LIMIT 1").fetchone()
-            if row and (row['lease']>t or row['next_at']>t): self.db.rollback(); return None
+            if row and (row[5]>t or row[4]>t): self.db.rollback(); return None
             if not row:
                 rows=self.db.execute("SELECT * FROM events WHERE status='pending' ORDER BY created LIMIT ?",(c['sender']['batch_size'],)).fetchall()
                 batch={'contract':'trassir.telemetry','contract_version':'1.0','batch_id':str(uuid.uuid4()),'sent_at':utc(),'producer':{'name':'trassir-sdk-agent','version':'1.0.0'},'server':{'server_id':c['server_id']},'events':[]}
                 selected=[]
                 for event in rows:
-                    batch['events'].append(json.loads(event['payload']))
+                    batch['events'].append(json.loads(event[1]))
                     if len(dumps(batch).encode('utf-8'))>c['sender']['max_batch_bytes']:
                         batch['events'].pop()
                         if not selected:
-                            self.db.execute("UPDATE events SET status='quarantine' WHERE id=?",(event['id'],)); continue
+                            self.db.execute("UPDATE events SET status='quarantine' WHERE id=?",(event[0],)); continue
                         break
-                    selected.append(event['id'])
+                    selected.append(event[0])
                 if not selected: self.db.commit(); return None
                 self.db.execute("INSERT INTO batches(id,payload,status,created) VALUES(?,?,'pending',?)",(batch['batch_id'],dumps(batch),t))
                 self.db.executemany("UPDATE events SET status='batched',batch_id=? WHERE id=?",[(batch['batch_id'],eid) for eid in selected])
                 row=self.db.execute('SELECT * FROM batches WHERE id=?',(batch['batch_id'],)).fetchone()
-            self.db.execute('UPDATE batches SET lease=?,owner=? WHERE id=?',(t+max(120,c['delivery']['timeout_seconds']*20),owner,row['id']))
-            self.db.commit(); return dict(row)
+            self.db.execute('UPDATE batches SET lease=?,owner=? WHERE id=?',(t+max(120,c['delivery']['timeout_seconds']*20),owner,row[0]))
+            self.db.commit(); return {'id':row[0],'payload':row[1]}
         except Exception: self.db.rollback(); raise
     def finish(self,bid,owner,ok,error,c):
         with self.db:
@@ -151,7 +151,7 @@ class EventRepository(object):
                 self.db.execute("UPDATE batches SET status='delivered',delivered=?,lease=0,owner=NULL,error=NULL WHERE id=?",(time.time(),bid))
                 self.db.execute("UPDATE events SET status='delivered' WHERE batch_id=?",(bid,))
             else:
-                n=row['attempts']+1; s=c['sender']
+                n=row[3]+1; s=c['sender']
                 delay=min(s['retry_max_seconds'],s['retry_initial_seconds']*2**min(n-1,16))*random.uniform(0.8,1.2)
                 self.db.execute('UPDATE batches SET attempts=?,next_at=?,lease=0,owner=NULL,error=? WHERE id=?',(n,time.time()+delay,error,bid))
     def cleanup(self,days):
